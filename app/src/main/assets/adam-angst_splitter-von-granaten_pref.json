@@ -1,0 +1,9 @@
+[
+  {"indexes": [[18, 26]], "right_option": "verändert", "index_blank": [18, 27], "distractors": ["umgeändert"], "line": 3},
+  {"indexes": [[56, 65]], "right_option": "verbraucht", "index_blank": [56, 66], "distractors": ["gebraucht", "aufbraucht", "missbraucht"], "line": 9},
+  {"indexes": [[26, 33]], "right_option": "erlassen", "index_blank": [26, 34], "distractors": ["eingelassen", "hingelassen", "mitgelassen"], "line": 18},
+  {"indexes": [[13, 21]], "right_option": "verbieten", "index_blank": [13, 22], "distractors": ["entbieten", "unterbieten", "überbieten"], "line": 19},
+  {"indexes": [[26, 34]], "right_option": "erklingen", "index_blank": [26, 35], "distractors": ["weiterklingen", "abklingen", "widerklingen"], "line": 21},
+  {"indexes": [[26, 34]], "right_option": "erklingen", "index_blank": [26, 35], "distractors": ["weiterklingen", "anklingen", "verklingen"], "line": 42},
+  {"indexes": [[29, 37]], "right_option": "verändern", "index_blank": [29, 38], "distractors": ["umändern"], "line": 47}
+]

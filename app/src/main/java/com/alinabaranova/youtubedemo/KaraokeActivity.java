@@ -1,14 +1,10 @@
 package com.alinabaranova.youtubedemo;
 
-import android.content.Context;
-import android.content.pm.PackageInfo;
-import android.content.pm.PackageManager;
-import android.content.res.AssetFileDescriptor;
-import android.content.res.AssetManager;
-import android.graphics.Color;import android.os.Bundle;
+import android.content.Intent;
+import android.graphics.Color;
+import android.os.Bundle;
 import android.os.Handler;
-import android.renderscript.ScriptGroup;
-import android.support.v4.content.ContextCompat;
+import android.text.Html;
 import android.util.Log;
 import android.view.Gravity;
 import android.widget.LinearLayout;
@@ -20,26 +16,20 @@ import com.google.android.youtube.player.YouTubeInitializationResult;
 import com.google.android.youtube.player.YouTubePlayer;
 import com.google.android.youtube.player.YouTubePlayerView;
 
-import org.w3c.dom.Text;
+import org.json.JSONObject;
 
-import java.io.BufferedReader;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.nio.Buffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 
-public class MainActivity extends YouTubeBaseActivity {
+public class KaraokeActivity extends YouTubeBaseActivity {
 
     YouTubePlayerView mYouTubePlayerView;
     YouTubePlayer.OnInitializedListener mOnInitializedListener;
     YouTubePlayer.PlayerStateChangeListener mPlayerStateChangeListener;
     YouTubePlayer myYouTubePlayer;
+
+    ScrollView scrollView;
 
     ArrayList<Integer> times = new ArrayList<>();
     ArrayList<String> lines = new ArrayList<>();
@@ -51,26 +41,97 @@ public class MainActivity extends YouTubeBaseActivity {
     int currentLineNumber = 0; // number for changing background of TextViews
     int currentTextViewNumber = 0; // number for focusing ScrollView on TextViews
 
+    private void videoTimer() {
+
+        // when video starts, get current time of video every 10 milliseconds
+
+        final Handler handler = new Handler();
+
+        Runnable run = new Runnable() {
+
+            public void run() {
+
+                // rounding number of seconds works best, because value of .getCurrentTimeMillis updates only once or twice in a second
+                if (Math.round(myYouTubePlayer.getCurrentTimeMillis()/1000.0) == times.get(currentLineNumber)) {
+
+                    // if there is line before current, stop highlighting it
+                    if (currentLineNumber > 0) {
+
+                        (findViewById(lineIds.get(currentLineNumber-1))).setBackgroundColor(Color.parseColor("#20AD65"));
+
+                    }
+
+                    // highlight current line
+                    (findViewById(lineIds.get(currentLineNumber))).setBackgroundColor(Color.parseColor("#00FF7D"));
+
+
+                    // set focus on line so that current line is in center
+                    int focusPoint = currentTextViewNumber - textViewsSeen/2 + 2;
+
+                    if (focusPoint < 0) {
+
+                        focusPoint = 0;
+
+                    } else if (lines.size()-focusPoint <= 22) {
+
+                        focusPoint = lines.size()-1;
+                    }
+
+                    scrollView.smoothScrollTo(0, (findViewById(fullIds.get(focusPoint))).getTop());
+
+                    // increment number for changing background of TextViews and number for focusing ScrollView on TextViews
+                    if (currentLineNumber < times.size()-1) {
+
+                        currentLineNumber++;
+                        currentTextViewNumber++;
+
+                        if (((TextView) findViewById(fullIds.get(currentTextViewNumber+1))).getText().toString().equals("")) {
+
+                            currentTextViewNumber++;
+                        }
+
+                    }
+
+                }
+
+                handler.postDelayed(this, 10);
+
+            }
+        };
+
+        // if text loaded correctly, run timer
+        if (lines.size() > 0 && times.size() > 0 && lineIds.size() > 0) {
+
+            handler.post(run);
+
+        }
+
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_karaoke);
 
-        final ScrollView scrollView = findViewById(R.id.scrollView);
+        scrollView = findViewById(R.id.scrollView);
+
+        final Intent intent = getIntent();
 
         try {
 
             // load text
-            KaraokeText myText = new KaraokeText(getAssets().open("rammstein_mutter.txt"));
+            String textFilename = intent.getStringExtra("textFilename");
+            KaraokeText myText = new KaraokeText(getAssets().open(textFilename));
             times = myText.getTimes();
             lines = myText.getLines();
 
             // fill linearLayout with dynamically created TextViews - lines of lyrics
             LinearLayout linearLayout = findViewById(R.id.linearLayout);
-            for (int c = 0; c < myText.getLines().size(); c++) {
+            for (int c = 0; c < lines.size(); c++) {
 
                 TextView textView = new TextView(getApplicationContext());
-                String line = myText.getLines().get(c);
+                String line = lines.get(c);
+                String key = Integer.toString(c);
                 textView.setText(line);
 
                 // set id and add it to both ArrayLists of ids
@@ -114,59 +175,7 @@ public class MainActivity extends YouTubeBaseActivity {
             @Override
             public void onVideoStarted() {
 
-                final Handler handler = new Handler();
-
-                Runnable run = new Runnable() {
-
-                    public void run() {
-
-                        if (Math.round(myYouTubePlayer.getCurrentTimeMillis()/1000.0) == times.get(currentLineNumber)) {
-
-                            if (currentLineNumber > 0) {
-
-                                (findViewById(lineIds.get(currentLineNumber-1))).setBackgroundColor(Color.parseColor("#20AD65"));
-
-                            }
-
-                            (findViewById(lineIds.get(currentLineNumber))).setBackgroundColor(Color.parseColor("#00FF7D"));
-
-                            int focusPoint = currentTextViewNumber - textViewsSeen/2 + 2;
-
-                            if (focusPoint < 0) {
-
-                                focusPoint = 0;
-
-                            } else if (lines.size()-focusPoint <= 22) {
-
-                                focusPoint = lines.size()-1;
-                            }
-
-                            scrollView.smoothScrollTo(0, (findViewById(fullIds.get(focusPoint))).getTop());
-
-                            if (currentLineNumber < times.size()-1) {
-
-                                currentLineNumber++;
-                                currentTextViewNumber++;
-
-                                if (((TextView) findViewById(fullIds.get(currentTextViewNumber))).getText().toString().equals("")) {
-
-                                    currentTextViewNumber++;
-                                }
-
-                            }
-
-                        }
-
-                        handler.postDelayed(this, 10);
-
-                    }
-                };
-
-                if (lines.size() > 0 && times.size() > 0 && lineIds.size() > 0) {
-
-                    handler.post(run);
-
-                }
+                videoTimer();
 
             }
 
@@ -185,7 +194,8 @@ public class MainActivity extends YouTubeBaseActivity {
             @Override
             public void onInitializationSuccess(YouTubePlayer.Provider provider, YouTubePlayer youTubePlayer, boolean b) {
 
-                youTubePlayer.loadVideo("gNdnVVHfseA");
+                String videoId = intent.getStringExtra("videoId");
+                youTubePlayer.loadVideo(videoId);
                 youTubePlayer.setPlayerStateChangeListener(mPlayerStateChangeListener);
 
                 myYouTubePlayer = youTubePlayer;
@@ -199,6 +209,15 @@ public class MainActivity extends YouTubeBaseActivity {
 
         };
         mYouTubePlayerView.initialize(YouTubeConfig.getApiKey(), mOnInitializedListener);
+
+    }
+
+    @Override
+    public void onBackPressed() {
+        // start activity MenuActivity, otherwise app stops
+
+        Intent intent = new Intent(getApplicationContext(), MenuActivity.class);
+        startActivity(intent);
 
     }
 }
