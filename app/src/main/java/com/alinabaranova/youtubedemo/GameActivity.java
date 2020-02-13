@@ -47,9 +47,12 @@ public class GameActivity extends YouTubeBaseActivity
 
     JSONArray constructions;    // array of constructions for song
     int questionNumber = 0;     // number of current blank
+    int questionLineNumber;     // number of line with current blank
     String rightOption;         // right option for current blank
     ArrayList<int[]> rowsAndCols;   // arraylist for adding buttons to gridlayout in a right way
     GridLayout gridLayout;          // GridLayout (contains buttons with answer options)
+
+    String color;   // color for highlighting
 
     // needed for runnable in videoTimer (otherwise should be declared final)
     int highlightCount;
@@ -106,7 +109,7 @@ public class GameActivity extends YouTubeBaseActivity
                 constructions = new JSONArray(loadJSONFromAsset(jsonFilename));
 
                 // get color code for highlighting
-                String color = intent.getStringExtra("color");
+                color = intent.getStringExtra("color");
 
                 // fill linearLayout with dynamically created TextViews - lines of lyrics
                 textLinearLayout = new LinearLayout(getApplicationContext());
@@ -185,17 +188,6 @@ public class GameActivity extends YouTubeBaseActivity
      */
     private void videoTimer() {
 
-        highlightCount = 0;     // current number of blank
-        curDict = null;         // current construction
-        lineNumber = -1;        // number of line containing current construction
-        try {
-            // fill current construction and number of line containing it
-            curDict = constructions.getJSONObject(highlightCount);
-            lineNumber = curDict.getInt("line");
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-
         // array for checking if stop after certain line has already been made or not
         final ArrayList<Integer> textViewNumbersSeen = new ArrayList<>();
         textViewNumbersSeen.add(currentTextViewNumber);
@@ -236,29 +228,13 @@ public class GameActivity extends YouTubeBaseActivity
 
                     scrollView.smoothScrollTo(0, (findViewById(fullIds.get(focusPoint))).getTop());
 
-//                    Log.i("Number of blank line", Integer.toString(lineNumber));
-//
-//                    if (curDict != null) {
-//                        if (currentTextViewNumber == lineNumber || (! textViewNumbersSeen.contains(lineNumber) && currentTextViewNumber == lineNumber+1)) {
-//
-//                            myYouTubePlayer.pause();
-//
-//                            Log.i("Current line number", Integer.toString(currentTextViewNumber));
-//
-//                            // increase linenumber
-//                            if (highlightCount < constructions.length()) {
-//
-//                                highlightCount++;
-//                                try {
-//                                    curDict = constructions.getJSONObject(highlightCount);
-//                                    lineNumber = curDict.getInt("line");
-//                                } catch (JSONException e) {
-//                                    e.printStackTrace();
-//                                }
-//
-//                            }
-//                        }
-//                    }
+                    // pause video if question hasn't been answered
+                    if ((textViewNumbersSeen.contains(questionLineNumber) && currentTextViewNumber == questionLineNumber+1) ||
+                                ((! textViewNumbersSeen.contains(questionLineNumber) || ! textViewNumbersSeen.contains(questionLineNumber+1)) && currentTextViewNumber == questionLineNumber+2)) {
+
+                            myYouTubePlayer.pause();
+
+                    }
 
                     // increment number for changing background of TextViews and number for focusing ScrollView on TextViews
                     if (currentLineNumber < times.size()-1) {
@@ -300,14 +276,46 @@ public class GameActivity extends YouTubeBaseActivity
     public void onClick(View v) {
 
         // get text of button that was clicked on
-        String answer = (String) ((Button) v).getText();
+        Button button = (Button) v;
+        String answer = button.getText().toString();
 
         // if answer is right, show options for the next question
         if (answer.equals(rightOption)) {
 
+            if (questionNumber < constructions.length()) {
+                // insert right answer
+                try {
+                    // get line for which question has been answered
+                    String questionLine = lines.get(questionLineNumber);
+
+                    // highlight right option in line
+                    JSONArray indexes = constructions.getJSONObject(questionNumber).getJSONArray("index_blank");
+                    int firstIndex = (int) indexes.get(0);
+                    int lastIndex = (int) indexes.get(1);
+                    String questionTextViewText = questionLine.substring(0, firstIndex);
+                    questionTextViewText += "<span style=\"background-color: " + color + "\">" + questionLine.substring(firstIndex, lastIndex) + "</span>";
+                    questionTextViewText += questionLine.substring(lastIndex);
+
+                    // get TextView filled with the line with blank and fill it with created line
+                    TextView questionTextView = findViewById(fullIds.get(questionLineNumber));
+                    questionTextView.setText(Html.fromHtml(questionTextViewText));
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+
             questionNumber++;
             if (questionNumber < constructions.length()) {
                 fillGridLayout();
+            } else {
+                // get line number of first line with blank, so video can play further
+                questionNumber = 0;
+                try {
+                    JSONObject curDict = constructions.getJSONObject(questionNumber);
+                    questionLineNumber = curDict.getInt("line");
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
             }
         }
 
@@ -415,6 +423,10 @@ public class GameActivity extends YouTubeBaseActivity
         try {
             // get current construction
             JSONObject curDict = constructions.getJSONObject(questionNumber);
+
+            // get line number with current blank
+            questionLineNumber = curDict.getInt("line");
+
             JSONArray options = curDict.getJSONArray("distractors");    // get distractors
 
             // get the right option and add it to array of distractors
