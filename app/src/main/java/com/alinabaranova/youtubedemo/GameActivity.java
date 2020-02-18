@@ -4,7 +4,7 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.os.Handler;
 import android.os.Bundle;
-import android.support.v4.view.ViewCompat;
+import android.support.v7.app.AppCompatActivity;
 import android.text.Html;
 import android.util.Log;
 import android.view.Gravity;
@@ -14,10 +14,9 @@ import android.widget.GridLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import com.google.android.youtube.player.YouTubeBaseActivity;
 import com.google.android.youtube.player.YouTubeInitializationResult;
 import com.google.android.youtube.player.YouTubePlayer;
-import com.google.android.youtube.player.YouTubePlayerView;
+import com.google.android.youtube.player.YouTubePlayerSupportFragment;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -28,14 +27,13 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
-public class GameActivity extends YouTubeBaseActivity
-    implements View.OnClickListener {
+public class GameActivity extends AppCompatActivity
+        implements View.OnClickListener {
 
-    YouTubePlayerView mYouTubePlayerView;
-    YouTubePlayer.OnInitializedListener mOnInitializedListener;
-    YouTubePlayer.PlayerStateChangeListener mPlayerStateChangeListener;
     YouTubePlayer myYouTubePlayer;
+    YouTubePlayer.PlayerStateChangeListener mPlayerStateChangeListener;
 
     ScrollViewWithMaxHeight scrollView;
     LinearLayout textLinearLayout;
@@ -53,16 +51,16 @@ public class GameActivity extends YouTubeBaseActivity
     ArrayList<int[]> rowsAndCols;   // arraylist for adding buttons to gridlayout in a right way
     GridLayout gridLayout;          // GridLayout (contains buttons with answer options)
 
+    LinearLayout controlLayout;     // layout for "try again" and "skip" or "play again" and "go back" buttons
+    Button controlButton1;
+    Button controlButton2;          // buttons in control layout
     String color;   // color for highlighting
-
-    // needed for runnable in videoTimer (otherwise should be declared final)
-    int highlightCount;
-    JSONObject curDict;
-    int lineNumber;
 
     int textViewsSeen = 22; // number of TextViews seen on the screen (can be different for different devices!)
     int currentLineNumber = 0; // number for changing background of TextViews
     int currentTextViewNumber = 0; // number for focusing ScrollView on TextViews
+    // array for checking if stop after certain line has already been made or not
+    List<Integer> textViewNumbersSeen = new ArrayList<>();
 
     Intent intent;
 
@@ -98,6 +96,7 @@ public class GameActivity extends YouTubeBaseActivity
 
             // load text
             String textFilename = intent.getStringExtra("textFilename");
+//            String textFilename = "adam-angst_splitter-von-granaten.txt";
             KaraokeText myText = new KaraokeText(getAssets().open(textFilename));
             times = myText.getTimes();
             lines = myText.getLines();
@@ -111,6 +110,7 @@ public class GameActivity extends YouTubeBaseActivity
 
                 // get color code for highlighting
                 color = intent.getStringExtra("color");
+//                color = "#00FFFF";
 
                 // fill linearLayout with dynamically created TextViews - lines of lyrics
                 textLinearLayout = new LinearLayout(getApplicationContext());
@@ -184,14 +184,23 @@ public class GameActivity extends YouTubeBaseActivity
 
     }
 
+    private void enableDisableButtons(boolean ifEnable) {
+
+        // disable buttons in GridLayout
+        int buttonCount = gridLayout.getChildCount();
+        for (int i=0; i < buttonCount; i++) {
+            Button button = (Button) gridLayout.getChildAt(i);
+            button.setEnabled(ifEnable);
+        }
+
+    }
+
     /**
      * Timer for selecting line currently sung.
      */
     private void videoTimer() {
 
-        // array for checking if stop after certain line has already been made or not
-        final ArrayList<Integer> textViewNumbersSeen = new ArrayList<>();
-        textViewNumbersSeen.add(currentTextViewNumber);
+//        textViewNumbersSeen.add(currentTextViewNumber);
 
         // when video starts, get current time of video every 10 milliseconds
 
@@ -214,7 +223,6 @@ public class GameActivity extends YouTubeBaseActivity
                     // highlight current line
                     (findViewById(lineIds.get(currentLineNumber))).setBackgroundColor(Color.parseColor("#00FF7D"));
 
-
                     // set focus on line so that current line is in center
                     int focusPoint = currentTextViewNumber - textViewsSeen/2 + 2;
 
@@ -229,16 +237,28 @@ public class GameActivity extends YouTubeBaseActivity
 
                     scrollView.smoothScrollTo(0, (findViewById(fullIds.get(focusPoint))).getTop());
 
-                    // pause video if question hasn't been answered
+//                  // pause video if question hasn't been answered
                     if ((textViewNumbersSeen.contains(questionLineNumber) && currentTextViewNumber == questionLineNumber+1) ||
-                                ((! textViewNumbersSeen.contains(questionLineNumber) || ! textViewNumbersSeen.contains(questionLineNumber+1)) && currentTextViewNumber == questionLineNumber+2)) {
+                            ((! textViewNumbersSeen.contains(questionLineNumber) || ! textViewNumbersSeen.contains(questionLineNumber+1)) && currentTextViewNumber == questionLineNumber+2)) {
 
-                            myYouTubePlayer.pause();
+                        myYouTubePlayer.pause();        // pause video
+
+                        // disable buttons in GridLayout
+                        enableDisableButtons(false);
+
+                        controlButton1.setText("Try again");
+                        controlButton2.setText("Skip");
+
+                        controlLayout.setVisibility(View.VISIBLE);      // show control layout
+
 
                     }
 
                     // increment number for changing background of TextViews and number for focusing ScrollView on TextViews
                     if (currentLineNumber < times.size()-1) {
+
+                        // add current number of textview to array of text view numbers
+                        textViewNumbersSeen.add(currentTextViewNumber);
 
                         currentLineNumber++;
                         currentTextViewNumber++;
@@ -248,14 +268,11 @@ public class GameActivity extends YouTubeBaseActivity
                             currentTextViewNumber++;
                         }
 
-                        // add current number of textview to array of text view numbers
-                        textViewNumbersSeen.add(currentTextViewNumber);
-
                     }
 
                 }
 
-                handler.postDelayed(this, 10);
+                handler.postDelayed(this, 5);
 
             }
         };
@@ -265,6 +282,48 @@ public class GameActivity extends YouTubeBaseActivity
 
             handler.post(run);
 
+        }
+
+    }
+
+    private void insertAndSwitch() {
+
+        if (questionNumber < constructions.length()) {
+            // insert right answer
+            try {
+                // get line for which question has been answered
+                String questionLine = lines.get(questionLineNumber);
+
+                // highlight right option in line
+                JSONArray indexes = constructions.getJSONObject(questionNumber).getJSONArray("index_blank");
+                int firstIndex = (int) indexes.get(0);
+                int lastIndex = (int) indexes.get(1);
+                String questionTextViewText = questionLine.substring(0, firstIndex);
+                questionTextViewText += "<span style=\"background-color: " + color + "\">" + questionLine.substring(firstIndex, lastIndex) + "</span>";
+                questionTextViewText += questionLine.substring(lastIndex);
+
+                // get TextView filled with the line with blank and fill it with created line
+                TextView questionTextView = findViewById(fullIds.get(questionLineNumber));
+                questionTextView.setText(Html.fromHtml(questionTextViewText));
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        }
+
+        questionNumber++;
+        if (questionNumber < constructions.length()) {
+            fillGridLayout();
+        }
+        else {
+            // get line number of first line with blank, so video can play further
+            try {
+                JSONObject curDict = constructions.getJSONObject(0);
+                questionLineNumber = curDict.getInt("line");
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+            // disable buttons
+            enableDisableButtons(false);
         }
 
     }
@@ -283,81 +342,114 @@ public class GameActivity extends YouTubeBaseActivity
         // if answer is right, show options for the next question
         if (answer.equals(rightOption)) {
 
-            if (questionNumber < constructions.length()) {
-                // insert right answer
-                try {
-                    // get line for which question has been answered
-                    String questionLine = lines.get(questionLineNumber);
+            insertAndSwitch();
 
-                    // highlight right option in line
-                    JSONArray indexes = constructions.getJSONObject(questionNumber).getJSONArray("index_blank");
-                    int firstIndex = (int) indexes.get(0);
-                    int lastIndex = (int) indexes.get(1);
-                    String questionTextViewText = questionLine.substring(0, firstIndex);
-                    questionTextViewText += "<span style=\"background-color: " + color + "\">" + questionLine.substring(firstIndex, lastIndex) + "</span>";
-                    questionTextViewText += questionLine.substring(lastIndex);
-
-                    // get TextView filled with the line with blank and fill it with created line
-                    TextView questionTextView = findViewById(fullIds.get(questionLineNumber));
-                    questionTextView.setText(Html.fromHtml(questionTextViewText));
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
-            }
-
-            questionNumber++;
-            if (questionNumber < constructions.length()) {
-                fillGridLayout();
-            } else {
-                // get line number of first line with blank, so video can play further
-                questionNumber = 0;
-                try {
-                    JSONObject curDict = constructions.getJSONObject(questionNumber);
-                    questionLineNumber = curDict.getInt("line");
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
-            }
         }
 
     }
 
+    public void chooseMethod(View view) {
+
+        String buttonText = ((Button) view).getText().toString();
+        if (buttonText.equals("Try again")) {
+            repeat(view);
+        } else if (buttonText.equals("Skip")) {
+            skip(view);
+        } else if (buttonText.equals("Go back")) {
+            onBackPressed();
+        }
+
+    }
+
+    public void skip(View view) {
+
+        // insert right answer and show new options
+        insertAndSwitch();
+
+        // hide panel
+        controlLayout.setVisibility(View.GONE);
+
+        // enable buttons
+        enableDisableButtons(true);
+
+        // continue playing video
+        myYouTubePlayer.play();
+
+    }
+
+    public void repeat(View view) {
+
+        // get number of empty lines before line previous to line with blank
+        int emptyLines = 0;
+        for (int i=0; i < questionLineNumber; i++) {
+            if (lines.get(i).equals("")) {
+                emptyLines++;
+            }
+        }
+        // get time for video to start playing from
+        int millis = times.get(questionLineNumber - 1 - emptyLines) * 1000;
+
+        // set currentLineNumber to line previous to line with blank
+        int highlightIndex;
+        if (currentLineNumber == times.size()-1) {
+            highlightIndex = currentLineNumber;
+        } else {
+            highlightIndex = currentLineNumber - 1;
+        }
+        // stop highlighting line that is currently highlighted
+        (findViewById(lineIds.get(highlightIndex))).setBackgroundColor(Color.parseColor("#20AD65"));
+
+        // set current line number to line previous to line with blank
+        currentLineNumber = questionLineNumber - 1 - emptyLines;
+        // highlight currentLineNumber
+        (findViewById(lineIds.get(currentLineNumber))).setBackgroundColor(Color.parseColor("#00FF7D"));
+
+        // set currentTextViewNumber to line previous to line with blank
+        currentTextViewNumber = questionLineNumber - 2;
+        // set focus on line using currentTextViewNumber
+        int focusPoint = currentTextViewNumber - textViewsSeen/2 + 2;
+
+        if (focusPoint < 0) {
+
+            focusPoint = 0;
+
+        } else if (lines.size()-focusPoint <= 22) {
+
+            focusPoint = lines.size()-1;
+        }
+
+        scrollView.smoothScrollTo(0, (findViewById(fullIds.get(focusPoint))).getTop());
+
+        // get subarray from textViewNumbersSeen until currentTextViewNumber included
+        int endIndex;
+        if (textViewNumbersSeen.contains(currentTextViewNumber)) {
+            endIndex = textViewNumbersSeen.indexOf(currentTextViewNumber);
+        } else {
+            endIndex = textViewNumbersSeen.indexOf(currentTextViewNumber-1);
+        }
+        textViewNumbersSeen = textViewNumbersSeen.subList(0, endIndex);
+
+        // enable buttons
+        enableDisableButtons(true);
+
+        // switch video to time of line previous to line with blank and play video
+        myYouTubePlayer.seekToMillis(millis);
+        myYouTubePlayer.play();
+
+        // hide layout
+        controlLayout.setVisibility(View.GONE);
+
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_highlight);
+        setContentView(R.layout.activity_game);
+
+        getSupportActionBar().hide();
 
         // layout for all elements lower than video
         LinearLayout bigLayout = findViewById(R.id.linearLayout);
-
-        // create resizable scroll view
-        scrollView = new ScrollViewWithMaxHeight(getApplicationContext());
-//        scrollView.setMaxHeight(getResources().getDisplayMetrics().heightPixels/2);
-        scrollView.setMaxHeight(800);
-
-        intent = getIntent();
-
-        loadGameText();     // add text views to text linear layout
-        scrollView.addView(textLinearLayout);   // add text linear layout to scroll view
-        bigLayout.addView(scrollView);      // add scroll view to main linear layout
-
-
-        // rows and columns for placing buttons in gridlayout
-        rowsAndCols = new ArrayList<>();
-        rowsAndCols.add(new int[] {0, 0});
-        rowsAndCols.add(new int[] {1, 0});
-        rowsAndCols.add(new int[] {0, 1});
-        rowsAndCols.add(new int[] {1, 1});
-
-        // grid layout for buttons
-        gridLayout = new GridLayout(getApplicationContext());
-        fillGridLayout();
-
-        // add grid layout to main linear layout
-        bigLayout.addView(gridLayout);
-
-        mYouTubePlayerView = findViewById(R.id.youtubePlay);
 
         mPlayerStateChangeListener = new YouTubePlayer.PlayerStateChangeListener() {
             @Override
@@ -383,6 +475,10 @@ public class GameActivity extends YouTubeBaseActivity
             @Override
             public void onVideoEnded() {
 
+                controlButton1.setText("Play again");
+                controlButton2.setText("Go back");
+                controlLayout.setVisibility(View.VISIBLE);
+
             }
 
             @Override
@@ -391,26 +487,53 @@ public class GameActivity extends YouTubeBaseActivity
             }
         };
 
-        mOnInitializedListener = new YouTubePlayer.OnInitializedListener() {
+        YouTubePlayerSupportFragment youTubePlayerFragment = (YouTubePlayerSupportFragment) getSupportFragmentManager().findFragmentById(R.id.youtube_player_fragment);
+        youTubePlayerFragment.initialize(YouTubeConfig.getApiKey(), new YouTubePlayer.OnInitializedListener() {
             @Override
             public void onInitializationSuccess(YouTubePlayer.Provider provider, YouTubePlayer youTubePlayer, boolean b) {
 
                 String videoId = intent.getStringExtra("videoId");
                 youTubePlayer.loadVideo(videoId);
+//                youTubePlayer.loadVideo("qbjaVTKEdG0");
+                youTubePlayer.setPlayerStyle(YouTubePlayer.PlayerStyle.CHROMELESS);
                 youTubePlayer.setPlayerStateChangeListener(mPlayerStateChangeListener);
-
                 myYouTubePlayer = youTubePlayer;
-
             }
 
             @Override
             public void onInitializationFailure(YouTubePlayer.Provider provider, YouTubeInitializationResult youTubeInitializationResult) {
 
             }
+        });
 
-        };
-        mYouTubePlayerView.initialize(YouTubeConfig.getApiKey(), mOnInitializedListener);
+        // create resizable scroll view
+        scrollView = new ScrollViewWithMaxHeight(getApplicationContext());
+        scrollView.setMaxHeight(800);
 
+        intent = getIntent();
+
+        loadGameText();     // add text views to text linear layout
+        scrollView.addView(textLinearLayout);   // add text linear layout to scroll view
+        bigLayout.addView(scrollView);      // add scroll view to main linear layout
+
+        // rows and columns for placing buttons in gridlayout
+        rowsAndCols = new ArrayList<>();
+        rowsAndCols.add(new int[] {0, 0});
+        rowsAndCols.add(new int[] {1, 0});
+        rowsAndCols.add(new int[] {0, 1});
+        rowsAndCols.add(new int[] {1, 1});
+
+        // grid layout for buttons
+        gridLayout = new GridLayout(getApplicationContext());
+        fillGridLayout();
+
+        // add grid layout to main linear layout
+        bigLayout.addView(gridLayout);
+
+        // initializing variables not included in bigLayout
+        controlLayout = findViewById(R.id.controlLayout);
+        controlButton1 = findViewById(R.id.controlButton1);
+        controlButton2 = findViewById(R.id.controlButton2);
     }
 
     /**

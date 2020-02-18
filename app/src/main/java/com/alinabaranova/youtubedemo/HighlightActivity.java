@@ -278,6 +278,7 @@ public class HighlightActivity extends YouTubeBaseActivity {
 
                 String videoId = intent.getStringExtra("videoId");
                 youTubePlayer.loadVideo(videoId);
+                youTubePlayer.setPlayerStyle(YouTubePlayer.PlayerStyle.CHROMELESS);
                 youTubePlayer.setPlayerStateChangeListener(mPlayerStateChangeListener);
 
                 myYouTubePlayer = youTubePlayer;
