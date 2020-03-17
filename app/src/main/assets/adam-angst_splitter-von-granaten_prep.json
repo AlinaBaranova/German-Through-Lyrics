@@ -1,15 +1,1 @@
-[
-  {"indexes": [[28, 53]], "line": 3},
-  {"indexes": [[45, 57]], "line": 16},
-  {"indexes": [[15, 34]], "line": 22},
-  {"indexes": [[45, 59]], "line": 26},
-  {"indexes": [[19, 35]], "line": 27},
-  {"indexes": [[12, 26]], "line": 28},
-  {"indexes": [[41, 51]], "line": 32},
-  {"indexes": [[43, 54]], "line": 33},
-  {"indexes": [[38, 49]], "line": 34},
-  {"indexes": [[11, 29]], "line": 37},
-  {"indexes": [[22, 34]], "line": 40},
-  {"indexes": [[15, 34]], "line": 43},
-  {"indexes": [[18, 34]], "line": 49}
-]
+[{"indexes": [[28, 53]], "right_option": "den", "index_blank": [31, 34], "distractors": ["dem", "der", "das"], "words": ["in", "den", "letzten", "f\u00fcnf", "Jahren"], "line": 3}, {"indexes": [[45, 57]], "right_option": "zum", "index_blank": [45, 48], "distractors": ["zur"], "words": ["zum", "Vergn\u00fcgen"], "line": 16}, {"indexes": [[45, 59]], "right_option": "diesem", "index_blank": [49, 55], "distractors": ["diesen", "diese", "dieses"], "words": ["von", "diesem", "Land"], "line": 26}, {"indexes": [[28, 44]], "right_option": "unterm", "index_blank": [28, 34], "distractors": ["untern"], "words": ["unterm", "Tellerrand"], "line": 28}, {"indexes": [[43, 54]], "right_option": "die", "index_blank": [46, 49], "distractors": ["den", "dem", "der"], "words": ["in", "die", "Menge"], "line": 33}, {"indexes": [[11, 29]], "right_option": "der", "index_blank": [14, 17], "distractors": ["das", "den", "des"], "words": ["in", "der", "Dritten", "Welt"], "line": 37}, {"indexes": [[22, 34]], "right_option": "einem", "index_blank": [25, 30], "distractors": ["einen", "ein", "eine"], "words": ["in", "einem", "Jahr"], "line": 40}, {"indexes": [[18, 34]], "right_option": "unterm", "index_blank": [18, 24], "distractors": ["untern"], "words": ["unterm", "Tellerrand"], "line": 49}]

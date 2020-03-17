@@ -1,10 +1,11 @@
 package com.alinabaranova.youtubedemo;
 
 import android.content.Intent;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
-import android.text.Html;
 import android.util.Log;
 import android.view.Gravity;
 import android.widget.LinearLayout;
@@ -16,10 +17,9 @@ import com.google.android.youtube.player.YouTubeInitializationResult;
 import com.google.android.youtube.player.YouTubePlayer;
 import com.google.android.youtube.player.YouTubePlayerView;
 
-import org.json.JSONObject;
+import org.json.JSONArray;
+import org.json.JSONException;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 
 public class KaraokeActivity extends YouTubeBaseActivity {
@@ -40,6 +40,9 @@ public class KaraokeActivity extends YouTubeBaseActivity {
     int textViewsSeen = 22; // number of TextViews seen on the screen (can be different for different devices!)
     int currentLineNumber = 0; // number for changing background of TextViews
     int currentTextViewNumber = 0; // number for focusing ScrollView on TextViews
+
+    SQLiteDatabase database;
+    int songId;
 
     private void videoTimer() {
 
@@ -116,14 +119,33 @@ public class KaraokeActivity extends YouTubeBaseActivity {
         scrollView = findViewById(R.id.scrollView);
 
         final Intent intent = getIntent();
+        songId = intent.getIntExtra("songId", -1);
+
+        // open database
+        getApplicationContext().deleteDatabase("app.db");
+        DBHelper dbHelper = new DBHelper(getApplicationContext());
+        database = dbHelper.getReadableDatabase();
+
+        // fill array of times and lines
+        Cursor cursor = database.rawQuery("SELECT * FROM songs WHERE song_id=" + songId, null);
 
         try {
+            JSONArray timesArray;
+            JSONArray linesArray;
 
-            // load text
-            String textFilename = intent.getStringExtra("textFilename");
-            KaraokeText myText = new KaraokeText(getAssets().open(textFilename));
-            times = myText.getTimes();
-            lines = myText.getLines();
+            if (cursor.getCount() > 0) {
+                cursor.moveToFirst();
+                timesArray = new JSONArray(cursor.getString(cursor.getColumnIndex("times")));
+                linesArray = new JSONArray(cursor.getString(cursor.getColumnIndex("lines")));
+                cursor.close();
+
+                for(int i=0; i < timesArray.length(); i++) {
+                    times.add(timesArray.getInt(i));
+                }
+                for(int i=0; i < linesArray.length(); i++) {
+                    lines.add(linesArray.getString(i));
+                }
+            }
 
             // fill linearLayout with dynamically created TextViews - lines of lyrics
             LinearLayout linearLayout = findViewById(R.id.linearLayout);
@@ -152,7 +174,7 @@ public class KaraokeActivity extends YouTubeBaseActivity {
 
             }
 
-        } catch (IOException e) {
+        } catch (JSONException e) {
             e.printStackTrace();
         }
 
@@ -194,12 +216,18 @@ public class KaraokeActivity extends YouTubeBaseActivity {
             @Override
             public void onInitializationSuccess(YouTubePlayer.Provider provider, YouTubePlayer youTubePlayer, boolean b) {
 
-                String videoId = intent.getStringExtra("videoId");
-                youTubePlayer.loadVideo(videoId);
-                youTubePlayer.setPlayerStyle(YouTubePlayer.PlayerStyle.CHROMELESS);
-                youTubePlayer.setPlayerStateChangeListener(mPlayerStateChangeListener);
+                Cursor cursor = database.rawQuery("SELECT * FROM songs WHERE song_id=" + songId, null);
+                if (cursor.getCount() > 0) {
+                    cursor.moveToFirst();
+                    String videoId = cursor.getString(cursor.getColumnIndex("video_id"));
+                    cursor.close();
 
-                myYouTubePlayer = youTubePlayer;
+                    youTubePlayer.loadVideo(videoId);
+                    youTubePlayer.setPlayerStyle(YouTubePlayer.PlayerStyle.CHROMELESS);
+                    youTubePlayer.setPlayerStateChangeListener(mPlayerStateChangeListener);
+
+                    myYouTubePlayer = youTubePlayer;
+                }
 
             }
 
@@ -218,6 +246,7 @@ public class KaraokeActivity extends YouTubeBaseActivity {
         // start activity MenuActivity, otherwise app stops
 
         Intent intent = new Intent(getApplicationContext(), MenuActivity.class);
+        intent.putExtra("songId", songId);
         startActivity(intent);
 
     }

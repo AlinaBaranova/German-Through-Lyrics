@@ -1,6 +1,8 @@
 package com.alinabaranova.youtubedemo;
 
 import android.content.Intent;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
@@ -9,6 +11,10 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+
 public class MenuActivity extends AppCompatActivity {
 
     ListView highlightOptions;
@@ -16,15 +22,12 @@ public class MenuActivity extends AppCompatActivity {
     boolean highlightOptionsAreShown;
     boolean gameOptionsAreShown;
 
+    int songId;
+
     public void toKaraokeActivity(View view) {
 
-        String videoId = "qbjaVTKEdG0";
-        String textFilename = "adam-angst_splitter-von-granaten.txt";
-
         Intent intent = new Intent(getApplicationContext(), KaraokeActivity.class);
-
-        intent.putExtra("videoId", videoId);
-        intent.putExtra("textFilename", textFilename);
+        intent.putExtra("songId", songId);
 
         startActivity(intent);
 
@@ -59,7 +62,34 @@ public class MenuActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_menu);
 
-        final String[] optionsList = {"Prepositions", "Verb prefixes", "Verb forms", "Passive"};
+        Intent intent = getIntent();
+        songId = intent.getIntExtra("songId", -1);
+
+        Map<String, String> topics = new HashMap<>();
+        topics.put("prep", "Prepositions");
+        topics.put("pref", "Verb prefixes");
+        topics.put("conj", "Verb forms");
+        topics.put("passive", "Passive");
+
+        // load database
+        getApplicationContext().deleteDatabase("app.db");
+        DBHelper dbHelper = new DBHelper(getApplicationContext());
+        SQLiteDatabase database = dbHelper.getReadableDatabase();
+
+        ArrayList<String> optionsList = new ArrayList<>(); // arraylist for topics that the song has constructions for
+        // check for which topics song has constructions
+        Cursor c  = database.rawQuery("SELECT * from constructions WHERE song_id=" + songId, null);
+
+        if (c.getCount() > 0) {
+            int constrTypeIndex = c.getColumnIndex("constr_type");
+
+            while (c.moveToNext()) {
+                String constrType = c.getString(constrTypeIndex);
+                optionsList.add(topics.get(constrType));
+            }
+        }
+        c.close();
+
         ArrayAdapter arrayAdapter = new ArrayAdapter(getApplicationContext(),
                 android.R.layout.simple_list_item_1, optionsList);
 
@@ -73,34 +103,36 @@ public class MenuActivity extends AppCompatActivity {
 
                 String selectedItem = (String) parent.getItemAtPosition(position);
 
-                String videoId = "qbjaVTKEdG0";
-                String songName = "adam-angst_splitter-von-granaten";
-                String textFilename = songName + ".txt";
-
-                String jsonFilename;
+                String constrType;
                 String color;
-                if (selectedItem.equals("Prepositions")) {
-                    jsonFilename = songName + "_prep.json";
-                    color = "#FFFF00";
-                } else if (selectedItem.equals("Verb prefixes")) {
-                    jsonFilename = songName + "_pref.json";
-                    color = "#00FFFF";
-                } else if (selectedItem.equals("Verb forms")) {
-                    jsonFilename = songName + "_conj.json";
-                    color = "#FF00FF";
-                } else {
-                    jsonFilename = songName + "_passive.json";
-                    color = "#FFFFFF";
+                switch (selectedItem) {
+                    case "Prepositions":
+                        constrType = "prep";
+                        color = "#FFFF00";
+                        break;
+
+                    case "Verb prefixes":
+                        constrType = "pref";
+                        color = "#00FFFF";
+                        break;
+
+                    case "Verb forms":
+                        constrType = "conj";
+                        color = "#FF00FF";
+                        break;
+
+                    default:
+                        constrType = "passive";
+                        color = "#FFFFFF";
                 }
 
-                Intent intent = new Intent(getApplicationContext(), GameActivity.class);
+                Intent newIntent = new Intent(getApplicationContext(), GameActivity.class);
 
-                intent.putExtra("videoId", videoId);
-                intent.putExtra("textFilename", textFilename);
-                intent.putExtra("jsonFilename", jsonFilename);
-                intent.putExtra("color", color);
+                newIntent.putExtra("constrType", constrType);
+                newIntent.putExtra("color", color);
+                newIntent.putExtra("songId", songId);
 
-                startActivity(intent);
+                startActivity(newIntent);
 
             }
         });
@@ -115,37 +147,49 @@ public class MenuActivity extends AppCompatActivity {
 
                 String selectedItem = (String) parent.getItemAtPosition(position);
 
-                String videoId = "qbjaVTKEdG0";
-                String songName = "adam-angst_splitter-von-granaten";
-                String textFilename = songName + ".txt";
-
-                String jsonFilename;
+                String constrType;
                 String color;
-                if (selectedItem.equals("Prepositions")) {
-                    jsonFilename = songName + "_prep.json";
-                    color = "#FFFF00";
-                } else if (selectedItem.equals("Verb prefixes")) {
-                    jsonFilename = songName + "_pref.json";
-                    color = "#00FFFF";
-                } else if (selectedItem.equals("Verb forms")) {
-                    jsonFilename = songName + "_conj.json";
-                    color = "#FF00FF";
-                } else {
-                    jsonFilename = songName + "_passive.json";
-                    color = "#FFFFFF";
+                switch (selectedItem) {
+                    case "Prepositions":
+                        constrType = "prep";
+                        color = "#FFFF00";
+                        break;
+
+                    case "Verb prefixes":
+                        constrType = "pref";
+                        color = "#00FFFF";
+                        break;
+
+                    case "Verb forms":
+                        constrType = "conj";
+                        color = "#FF00FF";
+                        break;
+
+                    default:
+                        constrType = "passive";
+                        color = "#FFFFFF";
                 }
 
-                Intent intent = new Intent(getApplicationContext(), HighlightActivity.class);
+                Intent newIntent = new Intent(getApplicationContext(), HighlightActivity.class);
 
-                intent.putExtra("videoId", videoId);
-                intent.putExtra("textFilename", textFilename);
-                intent.putExtra("jsonFilename", jsonFilename);
-                intent.putExtra("color", color);
+                newIntent.putExtra("constrType", constrType);
+                newIntent.putExtra("color", color);
+                newIntent.putExtra("songId", songId);
 
-                startActivity(intent);
+                startActivity(newIntent);
 
             }
         });
 
     }
+
+    @Override
+    public void onBackPressed() {
+
+        // start activity StartActivity
+        Intent intent = new Intent(getApplicationContext(), StartActivity.class);
+        startActivity(intent);
+
+    }
+
 }

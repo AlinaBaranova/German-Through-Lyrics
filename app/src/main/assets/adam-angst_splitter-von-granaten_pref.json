@@ -1,9 +1,1 @@
-[
-  {"indexes": [[18, 26]], "right_option": "verändert", "index_blank": [18, 27], "distractors": ["umgeändert"], "line": 3},
-  {"indexes": [[56, 65]], "right_option": "verbraucht", "index_blank": [56, 66], "distractors": ["gebraucht", "aufbraucht", "missbraucht"], "line": 9},
-  {"indexes": [[26, 33]], "right_option": "erlassen", "index_blank": [26, 34], "distractors": ["eingelassen", "hingelassen", "mitgelassen"], "line": 18},
-  {"indexes": [[13, 21]], "right_option": "verbieten", "index_blank": [13, 22], "distractors": ["entbieten", "unterbieten", "überbieten"], "line": 19},
-  {"indexes": [[26, 34]], "right_option": "erklingen", "index_blank": [26, 35], "distractors": ["weiterklingen", "abklingen", "widerklingen"], "line": 21},
-  {"indexes": [[26, 34]], "right_option": "erklingen", "index_blank": [26, 35], "distractors": ["weiterklingen", "anklingen", "verklingen"], "line": 42},
-  {"indexes": [[29, 37]], "right_option": "verändern", "index_blank": [29, 38], "distractors": ["umändern"], "line": 47}
-]
+[{"indexes": [[18, 26]], "right_option": "ver\u00e4ndert", "index_blank": [18, 27], "distractors": ["abge\u00e4ndert"], "words": ["ver\u00e4ndert"], "line": 3}, {"indexes": [[56, 65]], "right_option": "verbraucht", "index_blank": [56, 66], "distractors": ["gebraucht", "aufbraucht", "missbraucht"], "words": ["verbraucht"], "line": 9}, {"indexes": [[42, 51]], "right_option": "verpr\u00fcgeln", "index_blank": [42, 52], "distractors": ["durchpr\u00fcgeln"], "words": ["verpr\u00fcgeln"], "line": 17}, {"indexes": [[13, 21]], "right_option": "verbieten", "index_blank": [13, 22], "distractors": ["aufbieten", "darbieten", "\u00fcberbieten"], "words": ["verbieten"], "line": 19}, {"indexes": [[26, 34]], "right_option": "erklingen", "index_blank": [26, 35], "distractors": ["anklingen", "aufklingen", "nachklingen"], "words": ["erklingen"], "line": 42}, {"indexes": [[29, 37]], "right_option": "ver\u00e4ndern", "index_blank": [29, 38], "distractors": ["ab\u00e4ndern"], "words": ["ver\u00e4ndern"], "line": 47}]

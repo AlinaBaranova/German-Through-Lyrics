@@ -1,13 +1,16 @@
 package com.alinabaranova.youtubedemo;
 
 import android.content.Intent;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Color;
 import android.os.Handler;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.Html;
 import android.util.Log;
 import android.view.Gravity;
+import android.view.View;
+import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -20,8 +23,6 @@ import com.google.android.youtube.player.YouTubePlayerView;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 
 public class HighlightActivity extends YouTubeBaseActivity {
@@ -44,118 +45,123 @@ public class HighlightActivity extends YouTubeBaseActivity {
     int currentTextViewNumber = 0; // number for focusing ScrollView on TextViews
 
     Intent intent;
+    int songId;
 
-    private String loadJSONFromAsset(String filename) {
+    LinearLayout controlLayout;     // layout for "try again" and "skip" or "play again" and "go back" buttons
+    Button controlButton1;
+    Button controlButton2;          // buttons in control layout
 
-        String json = null;
-        try {
-            InputStream is = getAssets().open(filename);
-            int size = is.available();
-            byte[] buffer = new byte[size];
-            is.read(buffer);
-            is.close();
-
-            json = new String(buffer, "UTF-8");
-
-        } catch(IOException ex) {
-            ex.printStackTrace();
-        }
-        return json;
-    }
+    SQLiteDatabase database;
 
     private void loadHighlightedText() {
 
+        // load arrays of times and lines
+        Cursor cursor = database.rawQuery("SELECT * FROM songs WHERE song_id=" + songId, null);
+
         try {
+            JSONArray timesArray;
+            JSONArray linesArray;
 
-            // load text
-            String textFilename = intent.getStringExtra("textFilename");
-            KaraokeText myText = new KaraokeText(getAssets().open(textFilename));
-            times = myText.getTimes();
-            lines = myText.getLines();
+            if (cursor.getCount() > 0) {
+                cursor.moveToFirst();
+                timesArray = new JSONArray(cursor.getString(cursor.getColumnIndex("times")));
+                linesArray = new JSONArray(cursor.getString(cursor.getColumnIndex("lines")));
 
-            try {
-                // load json file
-                String jsonFilename = intent.getStringExtra("jsonFilename");
-                JSONArray constructions = new JSONArray(loadJSONFromAsset(jsonFilename));
-
-                // get color code for highlighting
-                String color = intent.getStringExtra("color");
-
-                // fill linearLayout with dynamically created TextViews - lines of lyrics
-                LinearLayout linearLayout = findViewById(R.id.linearLayout);
-
-                int highlightCount = 0;
-                JSONObject curDict = constructions.getJSONObject(highlightCount);
-                int lineNumber = curDict.getInt("line");
-
-                for (int c = 0; c < lines.size(); c++) {
-
-                    TextView textView = new TextView(getApplicationContext());
-                    String line = lines.get(c);
-                    String newLine = line;
-                    if (c == lineNumber) {
-                        try {
-
-                            JSONArray indexes = curDict.getJSONArray("indexes");
-
-                            newLine = "";
-
-                            int simpleIndex = 0;
-
-                            for (int i=0; i < indexes.length(); i++) {
-
-                                int firstIndex = (int)indexes.getJSONArray(i).get(0);
-                                int lastIndex = (int)indexes.getJSONArray(i).get(1);
-
-                                newLine += line.substring(simpleIndex, firstIndex);
-                                newLine += "<span style=\"background-color: " + color + "\">" + line.substring(firstIndex, lastIndex + 1) + "</span>";
-
-                                simpleIndex = lastIndex + 1;
-
-                            }
-
-                            newLine += line.substring(simpleIndex);
-
-                            // increase linenumber
-                            if (highlightCount < constructions.length()) {
-
-                                highlightCount++;
-                                curDict = constructions.getJSONObject(highlightCount);
-                                lineNumber = curDict.getInt("line");
-
-                            }
-
-                        } catch (org.json.JSONException ex) {
-                            ex.printStackTrace();
-                        }
-
-                    }
-                    textView.setText(Html.fromHtml(newLine));
-
-                    // set id and add it to both ArrayLists of ids
-                    textView.setId(c);
-                    if (!line.equals("")) {
-
-                        // c and textView.getId() are not the same i.e. findViewById(c) doesn't work
-                        lineIds.add(textView.getId());
-
-                    }
-                    fullIds.add(textView.getId());
-
-                    textView.setGravity(Gravity.CENTER_HORIZONTAL);
-                    textView.setBackgroundColor(Color.parseColor("#20AD65"));
-                    textView.setTextColor(Color.parseColor("#000000"));
-
-                    linearLayout.addView(textView);
-
+                for(int i=0; i < timesArray.length(); i++) {
+                    times.add(timesArray.getInt(i));
                 }
-
-            } catch(org.json.JSONException ex) {
-                ex.printStackTrace();
+                for(int i=0; i < linesArray.length(); i++) {
+                    lines.add(linesArray.getString(i));
+                }
             }
 
-        } catch (IOException e) {
-            e.printStackTrace();
+            // load json containing constructions
+            String constrType = intent.getStringExtra("constrType");
+            cursor = database.rawQuery("SELECT * FROM constructions WHERE " +
+                    "song_id=" + songId + " AND constr_type='" + constrType + "'", null);
+
+            JSONArray constructions = null;
+            if (cursor.getCount() > 0) {
+                cursor.moveToFirst();
+                constructions = new JSONArray(cursor.getString(cursor.getColumnIndex("constr_json")));
+            }
+            cursor.close();
+
+            // get color code for highlighting
+            String color = intent.getStringExtra("color");
+
+            // fill linearLayout with dynamically created TextViews - lines of lyrics
+            LinearLayout linearLayout = findViewById(R.id.linearLayout);
+
+            int highlightCount = 0;
+
+            JSONObject curDict = constructions.getJSONObject(highlightCount);
+            int lineNumber = curDict.getInt("line");
+
+            for (int c = 0; c < lines.size(); c++) {
+
+                TextView textView = new TextView(getApplicationContext());
+                String line = lines.get(c);
+                String newLine = line;
+                if (c == lineNumber) {
+                    try {
+
+                        JSONArray indexes = curDict.getJSONArray("indexes");
+
+                        newLine = "";
+
+                        int simpleIndex = 0;
+
+                        for (int i=0; i < indexes.length(); i++) {
+
+                            int firstIndex = (int)indexes.getJSONArray(i).get(0);
+                            int lastIndex = (int)indexes.getJSONArray(i).get(1);
+
+                            newLine += line.substring(simpleIndex, firstIndex);
+                            newLine += "<span style=\"background-color: " + color + "\">" + line.substring(firstIndex, lastIndex + 1) + "</span>";
+
+                            simpleIndex = lastIndex + 1;
+
+                        }
+
+                        newLine += line.substring(simpleIndex);
+
+                        // increase linenumber
+                        if (highlightCount < constructions.length()) {
+
+                            highlightCount++;
+                            curDict = constructions.getJSONObject(highlightCount);
+                            lineNumber = curDict.getInt("line");
+
+                        }
+
+                    } catch (org.json.JSONException ex) {
+                        ex.printStackTrace();
+                    }
+
+                }
+                textView.setText(Html.fromHtml(newLine));
+
+                // set id and add it to both ArrayLists of ids
+                textView.setId(c);
+                if (!line.equals("")) {
+
+                    // c and textView.getId() are not the same i.e. findViewById(c) doesn't work
+                    lineIds.add(textView.getId());
+
+                }
+                fullIds.add(textView.getId());
+
+                textView.setGravity(Gravity.CENTER_HORIZONTAL);
+                textView.setBackgroundColor(Color.parseColor("#20AD65"));
+                textView.setTextColor(Color.parseColor("#000000"));
+
+                linearLayout.addView(textView);
+
+            }
+
+        } catch(org.json.JSONException ex) {
+            ex.printStackTrace();
         }
 
     }
@@ -235,8 +241,19 @@ public class HighlightActivity extends YouTubeBaseActivity {
         scrollView = findViewById(R.id.scrollView);
 
         intent = getIntent();
+        // get id of song
+        songId = intent.getIntExtra("songId", -1);
+
+        // open database
+        getApplicationContext().deleteDatabase("app.db");
+        DBHelper dbHelper = new DBHelper(getApplicationContext());
+        database = dbHelper.getReadableDatabase();
 
         loadHighlightedText();
+
+        controlLayout = findViewById(R.id.controlLayout);
+        controlButton1 = findViewById(R.id.controlButton1);
+        controlButton2 = findViewById(R.id.controlButton2);
 
         mYouTubePlayerView = findViewById(R.id.youtubePlay);
 
@@ -264,6 +281,10 @@ public class HighlightActivity extends YouTubeBaseActivity {
             @Override
             public void onVideoEnded() {
 
+                controlButton1.setText("Play again");
+                controlButton2.setText("Go back");
+                controlLayout.setVisibility(View.VISIBLE);
+
             }
 
             @Override
@@ -276,12 +297,19 @@ public class HighlightActivity extends YouTubeBaseActivity {
             @Override
             public void onInitializationSuccess(YouTubePlayer.Provider provider, YouTubePlayer youTubePlayer, boolean b) {
 
-                String videoId = intent.getStringExtra("videoId");
-                youTubePlayer.loadVideo(videoId);
-                youTubePlayer.setPlayerStyle(YouTubePlayer.PlayerStyle.CHROMELESS);
-                youTubePlayer.setPlayerStateChangeListener(mPlayerStateChangeListener);
+                // load video id from database
+                Cursor cursor = database.rawQuery("SELECT * FROM songs WHERE song_id=" + songId, null);
+                if (cursor.getCount() > 0) {
+                    cursor.moveToFirst();
+                    String videoId = cursor.getString(cursor.getColumnIndex("video_id"));
 
-                myYouTubePlayer = youTubePlayer;
+                    youTubePlayer.loadVideo(videoId);
+                    youTubePlayer.setPlayerStyle(YouTubePlayer.PlayerStyle.CHROMELESS);
+                    youTubePlayer.setPlayerStateChangeListener(mPlayerStateChangeListener);
+
+                    myYouTubePlayer = youTubePlayer;
+                }
+                cursor.close();
 
             }
 
@@ -300,6 +328,7 @@ public class HighlightActivity extends YouTubeBaseActivity {
 
         // start activity MenuActivity, otherwise app stops
         Intent intent = new Intent(getApplicationContext(), MenuActivity.class);
+        intent.putExtra("songId", songId);
         startActivity(intent);
 
     }
