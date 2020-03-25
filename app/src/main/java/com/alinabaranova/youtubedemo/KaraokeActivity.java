@@ -4,28 +4,31 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Color;
+import android.graphics.PorterDuff;
+import android.graphics.Rect;
 import android.os.Bundle;
 import android.os.Handler;
-import android.util.Log;
+import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AppCompatActivity;
 import android.view.Gravity;
+import android.view.View;
+import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
-import com.google.android.youtube.player.YouTubeBaseActivity;
 import com.google.android.youtube.player.YouTubeInitializationResult;
 import com.google.android.youtube.player.YouTubePlayer;
-import com.google.android.youtube.player.YouTubePlayerView;
+import com.google.android.youtube.player.YouTubePlayerSupportFragment;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 
 import java.util.ArrayList;
+import java.util.Objects;
 
-public class KaraokeActivity extends YouTubeBaseActivity {
+public class KaraokeActivity extends AppCompatActivity {
 
-    YouTubePlayerView mYouTubePlayerView;
-    YouTubePlayer.OnInitializedListener mOnInitializedListener;
     YouTubePlayer.PlayerStateChangeListener mPlayerStateChangeListener;
     YouTubePlayer myYouTubePlayer;
 
@@ -33,16 +36,21 @@ public class KaraokeActivity extends YouTubeBaseActivity {
 
     ArrayList<Integer> times = new ArrayList<>();
     ArrayList<String> lines = new ArrayList<>();
+    LinearLayout linearLayout;
 
     ArrayList<Integer> lineIds = new ArrayList<>(); // ids for changing background of TextViews
     ArrayList<Integer> fullIds = new ArrayList<>(); // ids for focusing ScrollView on TextViews
 
-    int textViewsSeen = 22; // number of TextViews seen on the screen (can be different for different devices!)
+    int textViewsSeen; // number of TextViews seen on the screen
     int currentLineNumber = 0; // number for changing background of TextViews
     int currentTextViewNumber = 0; // number for focusing ScrollView on TextViews
 
     SQLiteDatabase database;
     int songId;
+
+    LinearLayout controlLayout;     // layout for "play again" and "go back" buttons
+    Button controlButton1;
+    Button controlButton2;          // buttons in control layout
 
     private void videoTimer() {
 
@@ -60,12 +68,12 @@ public class KaraokeActivity extends YouTubeBaseActivity {
                     // if there is line before current, stop highlighting it
                     if (currentLineNumber > 0) {
 
-                        (findViewById(lineIds.get(currentLineNumber-1))).setBackgroundColor(Color.parseColor("#20AD65"));
+                        (findViewById(lineIds.get(currentLineNumber-1))).setBackgroundColor(ContextCompat.getColor(getApplicationContext(), R.color.colorPrimaryDark));
 
                     }
 
                     // highlight current line
-                    (findViewById(lineIds.get(currentLineNumber))).setBackgroundColor(Color.parseColor("#00FF7D"));
+                    (findViewById(lineIds.get(currentLineNumber))).setBackgroundColor(Color.parseColor("#D6EAF8"));
 
 
                     // set focus on line so that current line is in center
@@ -75,7 +83,7 @@ public class KaraokeActivity extends YouTubeBaseActivity {
 
                         focusPoint = 0;
 
-                    } else if (lines.size()-focusPoint <= 22) {
+                    } else if (lines.size()-focusPoint <= textViewsSeen) {
 
                         focusPoint = lines.size()-1;
                     }
@@ -116,6 +124,87 @@ public class KaraokeActivity extends YouTubeBaseActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_karaoke);
 
+        // hide bar with app name
+        Objects.requireNonNull(getSupportActionBar()).hide();
+
+        mPlayerStateChangeListener = new YouTubePlayer.PlayerStateChangeListener() {
+            @Override
+            public void onLoading() {
+            }
+
+            @Override
+            public void onLoaded(String s) {
+            }
+
+            @Override
+            public void onAdStarted() {
+
+            }
+
+            @Override
+            public void onVideoStarted() {
+
+                Rect scrollBounds = new Rect();
+                scrollView.getHitRect(scrollBounds);
+                boolean visible = true;
+                int count = 0;
+                while (visible) {
+                    if (count < linearLayout.getChildCount()) {
+                        TextView view = (TextView) linearLayout.getChildAt(count);
+                        if (! view.getLocalVisibleRect(scrollBounds)) {
+                            visible = false;
+                        }
+
+                        count++;
+                    }
+                }
+
+                textViewsSeen = count - 1;
+
+                videoTimer();
+
+            }
+
+            @Override
+            public void onVideoEnded() {
+
+                controlButton1.setText("Play again");
+                controlButton2.setText("Go back");
+                controlLayout.setVisibility(View.VISIBLE);
+
+            }
+
+            @Override
+            public void onError(YouTubePlayer.ErrorReason errorReason) {
+
+            }
+        };
+
+        YouTubePlayerSupportFragment youTubePlayerFragment = (YouTubePlayerSupportFragment) getSupportFragmentManager().findFragmentById(R.id.youtube_player_fragment);
+        Objects.requireNonNull(youTubePlayerFragment).initialize(YouTubeConfig.getApiKey(), new YouTubePlayer.OnInitializedListener() {
+            @Override
+            public void onInitializationSuccess(YouTubePlayer.Provider provider, YouTubePlayer youTubePlayer, boolean b) {
+
+                Cursor cursor = database.rawQuery("SELECT * FROM songs WHERE song_id=" + songId, null);
+                if (cursor.getCount() > 0) {
+                    cursor.moveToFirst();
+                    String videoId = cursor.getString(cursor.getColumnIndex("video_id"));
+                    cursor.close();
+
+                    youTubePlayer.loadVideo(videoId);
+                    youTubePlayer.setPlayerStyle(YouTubePlayer.PlayerStyle.CHROMELESS);
+                    youTubePlayer.setPlayerStateChangeListener(mPlayerStateChangeListener);
+
+                    myYouTubePlayer = youTubePlayer;
+                }
+            }
+
+            @Override
+            public void onInitializationFailure(YouTubePlayer.Provider provider, YouTubeInitializationResult youTubeInitializationResult) {
+
+            }
+        });
+
         scrollView = findViewById(R.id.scrollView);
 
         final Intent intent = getIntent();
@@ -148,12 +237,11 @@ public class KaraokeActivity extends YouTubeBaseActivity {
             }
 
             // fill linearLayout with dynamically created TextViews - lines of lyrics
-            LinearLayout linearLayout = findViewById(R.id.linearLayout);
+            linearLayout = findViewById(R.id.linearLayout);
             for (int c = 0; c < lines.size(); c++) {
 
                 TextView textView = new TextView(getApplicationContext());
                 String line = lines.get(c);
-                String key = Integer.toString(c);
                 textView.setText(line);
 
                 // set id and add it to both ArrayLists of ids
@@ -167,8 +255,10 @@ public class KaraokeActivity extends YouTubeBaseActivity {
                 fullIds.add(textView.getId());
 
                 textView.setGravity(Gravity.CENTER_HORIZONTAL);
-                textView.setBackgroundColor(Color.parseColor("#20AD65"));
-                textView.setTextColor(Color.parseColor("#000000"));
+                textView.setBackgroundColor(ContextCompat.getColor(getApplicationContext(), R.color.colorPrimaryDark));
+                textView.setTextColor(Color.parseColor("#1F618D"));
+
+                textView.setTextSize(16);
 
                 linearLayout.addView(textView);
 
@@ -178,66 +268,27 @@ public class KaraokeActivity extends YouTubeBaseActivity {
             e.printStackTrace();
         }
 
-        mYouTubePlayerView = findViewById(R.id.youtubePlay);
 
-        mPlayerStateChangeListener = new YouTubePlayer.PlayerStateChangeListener() {
-            @Override
-            public void onLoading() {
-            }
+        controlLayout = findViewById(R.id.controlLayout);
+        controlButton1 = findViewById(R.id.controlButton1);
+        controlButton1.getBackground().setColorFilter(Color.parseColor("#D6EAF8"), PorterDuff.Mode.MULTIPLY);
+        controlButton2 = findViewById(R.id.controlButton2);
+        controlButton2.getBackground().setColorFilter(Color.parseColor("#D6EAF8"), PorterDuff.Mode.MULTIPLY);
 
-            @Override
-            public void onLoaded(String s) {
-            }
+    }
 
-            @Override
-            public void onAdStarted() {
+    public void chooseMethod(View view) {
 
-            }
+        String buttonText = ((Button) view).getText().toString();
+        if (buttonText.equals("Go back")) {
+            onBackPressed();
+        } else {
+            Intent intent = new Intent(getApplicationContext(), KaraokeActivity.class);
 
-            @Override
-            public void onVideoStarted() {
+            intent.putExtra("songId", songId);
 
-                videoTimer();
-
-            }
-
-            @Override
-            public void onVideoEnded() {
-
-            }
-
-            @Override
-            public void onError(YouTubePlayer.ErrorReason errorReason) {
-
-            }
-        };
-
-        mOnInitializedListener = new YouTubePlayer.OnInitializedListener() {
-            @Override
-            public void onInitializationSuccess(YouTubePlayer.Provider provider, YouTubePlayer youTubePlayer, boolean b) {
-
-                Cursor cursor = database.rawQuery("SELECT * FROM songs WHERE song_id=" + songId, null);
-                if (cursor.getCount() > 0) {
-                    cursor.moveToFirst();
-                    String videoId = cursor.getString(cursor.getColumnIndex("video_id"));
-                    cursor.close();
-
-                    youTubePlayer.loadVideo(videoId);
-                    youTubePlayer.setPlayerStyle(YouTubePlayer.PlayerStyle.CHROMELESS);
-                    youTubePlayer.setPlayerStateChangeListener(mPlayerStateChangeListener);
-
-                    myYouTubePlayer = youTubePlayer;
-                }
-
-            }
-
-            @Override
-            public void onInitializationFailure(YouTubePlayer.Provider provider, YouTubeInitializationResult youTubeInitializationResult) {
-
-            }
-
-        };
-        mYouTubePlayerView.initialize(YouTubeConfig.getApiKey(), mOnInitializedListener);
+            startActivity(intent);
+        }
 
     }
 

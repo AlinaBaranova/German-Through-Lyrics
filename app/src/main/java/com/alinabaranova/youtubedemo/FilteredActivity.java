@@ -1,5 +1,6 @@
 package com.alinabaranova.youtubedemo;
 
+import android.app.PendingIntent;
 import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
@@ -7,17 +8,16 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
-import android.widget.HorizontalScrollView;
 import android.widget.ListView;
 import android.widget.SearchView;
 
 import java.util.ArrayList;
 import java.util.Objects;
 
-
-public class StartActivity extends AppCompatActivity implements SearchView.OnQueryTextListener, AdapterView.OnItemClickListener {
+public class FilteredActivity extends AppCompatActivity implements AdapterView.OnItemClickListener, SearchView.OnQueryTextListener {
 
     ArrayList<Bitmap> images = new ArrayList<>();       // all album covers in database
     ArrayList<String> artistNames = new ArrayList<>();  // all artist names for songs
@@ -32,16 +32,21 @@ public class StartActivity extends AppCompatActivity implements SearchView.OnQue
 
     SQLiteDatabase database;
 
-    HorizontalScrollView topicScrollView;       // scrollview for grammatical topics
-    HorizontalScrollView genreScrollView;       // scrollview for genres
+    String sortType;    // type of sort
+    String constrType;  // if type of sort is "constr", contains construction type
+    String genre;       // if type of sort is "genre", contains genre
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_start);
+        setContentView(R.layout.activity_filtered);
 
         // hide bar with app name
         Objects.requireNonNull(getSupportActionBar()).hide();
+
+        // get type of sort
+        Intent intent = getIntent();
+        sortType = intent.getStringExtra("sortType");
 
         // load database
         getApplicationContext().deleteDatabase("app.db");
@@ -49,34 +54,51 @@ public class StartActivity extends AppCompatActivity implements SearchView.OnQue
         database = dbHelper.getReadableDatabase();
 
         // query database
-        Cursor c = database.rawQuery("SELECT * FROM songs ORDER BY artist", null);
-        if (c.getCount() > 0) {
-            int songNameIndex = c.getColumnIndex("song_name");
-            int artistIndex = c.getColumnIndex("artist");
-            int imageIndex = c.getColumnIndex("album_cover");
+        ArrayList<Integer> songIds = new ArrayList<>();
+        Cursor c;
+        if (sortType.equals("constr")) {
+            // find all ids of songs that have certain type of constructions
+            constrType = intent.getStringExtra("constrType");
+            c = database.rawQuery("SELECT song_id FROM constructions WHERE constr_type='" + constrType + "'", null);
 
-            c.moveToFirst();
-            do {
-                byte[] imgByte = c.getBlob(imageIndex);
+        } else {
+            // find all ids of songs that belong to certain genre
+            genre = intent.getStringExtra("genre");
+            c = database.rawQuery("SELECT song_id FROM songs WHERE genre='" + genre + "'", null);
+        }
+
+        while (c.moveToNext()) {
+            songIds.add(c.getInt(0));
+        }
+
+        // extract song names, artist and images for songs with ids listed in songIds
+        for (int i=0; i < songIds.size(); i++) {
+            c = database.rawQuery("SELECT song_name, artist, album_cover FROM songs WHERE song_id=" + songIds.get(i), null);
+            if (c.moveToFirst()) {
+                byte[] imgByte = c.getBlob(2);
                 images.add(BitmapFactory.decodeByteArray(imgByte, 0, imgByte.length));
-                artistNames.add(c.getString(artistIndex));
-                songNames.add(c.getString(songNameIndex));
-
-            } while (c.moveToNext());
+                artistNames.add(c.getString(1));
+                songNames.add(c.getString(0));
+            }
         }
         c.close();
 
-        // find listview and set clicklistener to it
+        // find list view and set its clicklistener
         listView = findViewById(R.id.listView);
         listView.setOnItemClickListener(this);
 
-        // find search view and set textlistener to it
+        // add all values to arraylists for adapter
+        imagesShown.addAll(images);
+        artistNamesShown.addAll(artistNames);
+        songNamesShown.addAll(songNames);
+
+        // set adapter and add it to listview
+        adapter = new ListAdapter(getApplicationContext(), imagesShown, artistNamesShown, songNamesShown);
+        listView.setAdapter(adapter);
+
+        // find searchview and set its textlistener
         SearchView searchView = findViewById(R.id.searchView);
         searchView.setOnQueryTextListener(this);
-
-        // find scrollview with grammatical topics and genres
-        topicScrollView = findViewById(R.id.topicScrollView);
-        genreScrollView = findViewById(R.id.genreScrollView);
 
     }
 
@@ -84,7 +106,6 @@ public class StartActivity extends AppCompatActivity implements SearchView.OnQue
     public boolean onQueryTextSubmit(String query) {
         return false;
     }
-
 
     @Override
     public boolean onQueryTextChange(String newText) {
@@ -97,6 +118,7 @@ public class StartActivity extends AppCompatActivity implements SearchView.OnQue
 
         // add songs that contain query
         if (text.length() > 0) {
+            Log.i("Text", text);
             String[] textParts = text.split(" ");
             for (int i = 0; i < artistNames.size(); i++) {
                 Bitmap curImage = images.get(i);
@@ -119,23 +141,20 @@ public class StartActivity extends AppCompatActivity implements SearchView.OnQue
                 }
             }
 
-            // hide scrollviews with grammatical topics and genres
-            topicScrollView.setVisibility(View.GONE);
-            genreScrollView.setVisibility(View.GONE);
-
         } else {
-
-            // if query is empty, show scrollviews with grammatical topics and genres
-            topicScrollView.setVisibility(View.VISIBLE);
-            genreScrollView.setVisibility(View.VISIBLE);
+            // if nothing is typed, add all songs
+            imagesShown.addAll(images);
+            artistNamesShown.addAll(artistNames);
+            songNamesShown.addAll(songNames);
 
         }
 
-        // create adapter with information of songs in the filter and assign it to listview
+        // create adapter with information of songs in the filter or all songs and assign it to listview
         adapter = new ListAdapter(getApplicationContext(), imagesShown, artistNamesShown, songNamesShown);
         listView.setAdapter(adapter);
 
         return false;
+
     }
 
     @Override
@@ -146,6 +165,7 @@ public class StartActivity extends AppCompatActivity implements SearchView.OnQue
 
         // find id of song
         Cursor c = database.rawQuery("SELECT * FROM songs WHERE song_name='" + song_name + "' AND artist='" + artist + "'", null);
+
         int songId = -1;
         if (c.getCount() > 0) {
             int idIndex = c.getColumnIndex("song_id");
@@ -153,93 +173,27 @@ public class StartActivity extends AppCompatActivity implements SearchView.OnQue
             c.moveToFirst();
             songId = c.getInt(idIndex);
         }
+
         c.close();
 
         // open MenuActivity for song
         Intent intent = new Intent(getApplicationContext(), MenuActivity.class);
         intent.putExtra("songId", songId);
-        intent.putExtra("prevAct", "StartActivity");
+        intent.putExtra("prevAct", "FilteredActivity");
+        intent.putExtra("sortType", sortType);
+
+        if (sortType.equals("constr")) {
+            intent.putExtra("constrType", constrType);
+        } else {
+            intent.putExtra("genre", genre);
+        }
+
         startActivity(intent);
     }
 
-    public void onClickTextView(View view) {
-        // for textviews in scrollviews with genres and grammatical constructions
-
-        Intent intent = new Intent(getApplicationContext(), FilteredActivity.class);
-
-        int id = view.getId();
-        switch (id) {
-            case R.id.textViewPrep:
-                intent.putExtra("constrType", "prep");
-                intent.putExtra("sortType", "constr");
-                break;
-
-            case R.id.textViewPref:
-                intent.putExtra("constrType", "pref");
-                intent.putExtra("sortType", "constr");
-                break;
-
-            case R.id.textViewConj:
-                intent.putExtra("constrType", "conj");
-                intent.putExtra("sortType", "constr");
-                break;
-
-            case R.id.textViewPassive:
-                intent.putExtra("constrType", "passive");
-                intent.putExtra("sortType", "constr");
-                break;
-
-            case R.id.textViewHipHop:
-                intent.putExtra("genre", "Hip-Hop");
-                intent.putExtra("sortType", "genre");
-                break;
-
-            case R.id.textViewRock:
-                intent.putExtra("genre", "Rock");
-                intent.putExtra("sortType", "genre");
-                break;
-
-            case R.id.textViewPop:
-                intent.putExtra("genre", "Pop");
-                intent.putExtra("sortType", "genre");
-                break;
-
-            case R.id.textViewSingSong:
-                intent.putExtra("genre", "Singer/Songwriter");
-                intent.putExtra("sortType", "genre");
-                break;
-
-            case R.id.textViewElectronic:
-                intent.putExtra("genre", "Electronic");
-                intent.putExtra("sortType", "genre");
-                break;
-
-            case R.id.textViewMetal:
-                intent.putExtra("genre", "Metal");
-                intent.putExtra("sortType", "genre");
-                break;
-
-            case R.id.textViewGenre:
-                genreScrollView.scrollTo(findViewById(R.id.textViewHipHop).getLeft(), 0);
-                intent = null;
-                break;
-
-            default:
-                topicScrollView.scrollTo(findViewById(R.id.textViewPrep).getLeft(), 0);
-                intent = null;
-
-        }
-
-        if (intent != null) {
-
-            startActivity(intent);
-        }
-
-    }
-
+    @Override
     public void onBackPressed() {
-        // go out of the app if back button is pressed
-        this.finishAffinity();
+        Intent newIntent = new Intent(getApplicationContext(), StartActivity.class);
+        startActivity(newIntent);
     }
-
 }

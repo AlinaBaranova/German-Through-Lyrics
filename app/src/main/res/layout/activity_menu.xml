@@ -7,52 +7,90 @@
     tools:context=".MenuActivity">
 
     <LinearLayout
-        android:layout_width="292dp"
+        android:id="@+id/linearLayoutMain"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:layout_marginTop="164dp"
-        android:layout_marginEnd="8dp"
+        android:layout_margin="12dp"
+        android:gravity="center"
         android:orientation="vertical"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.495"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
-        <Button
-            android:id="@+id/karaokeButton"
+        <ImageView
+            android:id="@+id/imageView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:onClick="toKaraokeActivity"
-            android:text="Karaoke mode" />
+            android:layout_margin="0dp"
+            android:adjustViewBounds="true" />
 
-        <Button
-            android:id="@+id/highlightButton"
-            android:layout_width="match_parent"
+        <TextView
+            android:id="@+id/textViewArtist"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:onClick="openOptions"
-            android:text="Highlight mode"
-            android:visibility="visible" />
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="0dp"
+            android:text="TextView"
+            android:textSize="24sp" />
 
-        <ListView
-            android:id="@+id/highlightOptions"
-            android:layout_width="match_parent"
+        <TextView
+            android:id="@+id/textViewSong"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:visibility="gone">
+            android:text="TextView"
+            android:textSize="18sp" />
 
-        </ListView>
-
-        <Button
-            android:id="@+id/gameButton"
+        <ScrollView
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:onClick="openOptions"
-            android:text="Game mode" />
+            android:layout_height="wrap_content">
+            <!--android:fillViewport="true"-->
 
-        <ListView
-            android:id="@+id/gameOptions"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:visibility="gone" />
+            <LinearLayout
+                android:id="@+id/linearLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="50dp"
+                android:layout_marginTop="16dp"
+                android:layout_marginEnd="50dp"
+                android:orientation="vertical">
+
+                <Button
+                    android:id="@+id/karaokeButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:onClick="toKaraokeActivity"
+                    android:text="Karaoke mode" />
+
+                <Button
+                    android:id="@+id/highlightButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:onClick="openOptions"
+                    android:text="Highlight mode"
+                    android:visibility="visible" />
+
+                <com.alinabaranova.youtubedemo.NonScrollListView
+                    android:id="@+id/highlightOptions"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:visibility="gone" />
+
+                <Button
+                    android:id="@+id/gameButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:onClick="openOptions"
+                    android:text="Game mode" />
+
+                <com.alinabaranova.youtubedemo.NonScrollListView
+                    android:id="@+id/gameOptions"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:visibility="gone" />
+
+            </LinearLayout>
+        </ScrollView>
 
     </LinearLayout>
+
 </android.support.constraint.ConstraintLayout>

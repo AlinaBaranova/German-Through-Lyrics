@@ -4,11 +4,14 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Color;
+import android.graphics.PorterDuff;
+import android.graphics.Rect;
 import android.os.Handler;
 import android.os.Bundle;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.text.Html;
-import android.util.Log;
+import android.util.DisplayMetrics;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
@@ -24,12 +27,10 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 public class GameActivity extends AppCompatActivity
         implements View.OnClickListener {
@@ -52,6 +53,7 @@ public class GameActivity extends AppCompatActivity
     String rightOption;         // right option for current blank
     ArrayList<int[]> rowsAndCols;   // arraylist for adding buttons to gridlayout in a right way
     GridLayout gridLayout;          // GridLayout (contains buttons with answer options)
+    LinearLayout bigLayout;
 
     LinearLayout controlLayout;     // layout for "try again" and "skip" or "play again" and "go back" buttons
     Button controlButton1;
@@ -167,8 +169,10 @@ public class GameActivity extends AppCompatActivity
                 fullIds.add(textView.getId());
 
                 textView.setGravity(Gravity.CENTER_HORIZONTAL);
-                textView.setBackgroundColor(Color.parseColor("#20AD65"));
-                textView.setTextColor(Color.parseColor("#000000"));
+                textView.setBackgroundColor(ContextCompat.getColor(getApplicationContext(), R.color.colorPrimaryDark));
+                textView.setTextColor(Color.parseColor("#1F618D"));
+
+                textView.setTextSize(16);
 
                 textLinearLayout.addView(textView);
 
@@ -210,12 +214,12 @@ public class GameActivity extends AppCompatActivity
                     // if there is line before current, stop highlighting it
                     if (currentLineNumber > 0) {
 
-                        (findViewById(lineIds.get(currentLineNumber-1))).setBackgroundColor(Color.parseColor("#20AD65"));
+                        (findViewById(lineIds.get(currentLineNumber-1))).setBackgroundColor(ContextCompat.getColor(getApplicationContext(), R.color.colorPrimaryDark));
 
                     }
 
                     // highlight current line
-                    (findViewById(lineIds.get(currentLineNumber))).setBackgroundColor(Color.parseColor("#00FF7D"));
+                    (findViewById(lineIds.get(currentLineNumber))).setBackgroundColor(Color.parseColor("#D6EAF8"));
 
                     // set focus on line so that current line is in center
                     int focusPoint = currentTextViewNumber - textViewsSeen/2 + 2;
@@ -224,7 +228,7 @@ public class GameActivity extends AppCompatActivity
 
                         focusPoint = 0;
 
-                    } else if (lines.size()-focusPoint <= 22) {
+                    } else if (lines.size()-focusPoint <= textViewsSeen) {
 
                         focusPoint = lines.size()-1;
                     }
@@ -243,6 +247,7 @@ public class GameActivity extends AppCompatActivity
                         controlButton1.setText("Try again");
                         controlButton2.setText("Skip");
 
+//                        bigLayout.setBackgroundColor(Color.parseColor("#ABB2B9"));
                         controlLayout.setVisibility(View.VISIBLE);      // show control layout
 
 
@@ -316,8 +321,17 @@ public class GameActivity extends AppCompatActivity
             } catch (JSONException e) {
                 e.printStackTrace();
             }
+
             // disable buttons
             enableDisableButtons(false);
+
+            // change color of buttons
+            int buttonCount = gridLayout.getChildCount();
+            for (int i=0; i < buttonCount; i++) {
+                Button button = (Button) gridLayout.getChildAt(i);
+                button.getBackground().setColorFilter(Color.parseColor("#E5E8E8"), PorterDuff.Mode.MULTIPLY);
+                button.setTextColor(Color.parseColor("#616A6B"));
+            }
         }
 
     }
@@ -406,12 +420,12 @@ public class GameActivity extends AppCompatActivity
             highlightIndex = currentLineNumber - 1;
         }
         // stop highlighting line that is currently highlighted
-        (findViewById(lineIds.get(highlightIndex))).setBackgroundColor(Color.parseColor("#20AD65"));
+        (findViewById(lineIds.get(highlightIndex))).setBackgroundColor(ContextCompat.getColor(getApplicationContext(), R.color.colorPrimaryDark));
 
         // set current line number to line previous to line with blank
         currentLineNumber = questionLineNumber - 1 - emptyLines;
         // highlight currentLineNumber
-        (findViewById(lineIds.get(currentLineNumber))).setBackgroundColor(Color.parseColor("#00FF7D"));
+        (findViewById(lineIds.get(currentLineNumber))).setBackgroundColor(Color.parseColor("#D6EAF8"));
 
         // set currentTextViewNumber to line previous to line with blank
         currentTextViewNumber = questionLineNumber - 2;
@@ -455,10 +469,11 @@ public class GameActivity extends AppCompatActivity
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_game);
 
-        getSupportActionBar().hide();
+        // hide bar with app name
+        Objects.requireNonNull(getSupportActionBar()).hide();
 
         // layout for all elements lower than video
-        LinearLayout bigLayout = findViewById(R.id.linearLayout);
+        bigLayout = findViewById(R.id.linearLayout);
 
         mPlayerStateChangeListener = new YouTubePlayer.PlayerStateChangeListener() {
             @Override
@@ -476,6 +491,23 @@ public class GameActivity extends AppCompatActivity
 
             @Override
             public void onVideoStarted() {
+
+                Rect scrollBounds = new Rect();
+                scrollView.getHitRect(scrollBounds);
+                boolean visible = true;
+                int count = 0;
+                while (visible) {
+                    if (count < textLinearLayout.getChildCount()) {
+                        TextView view = (TextView) textLinearLayout.getChildAt(count);
+                        if (! view.getLocalVisibleRect(scrollBounds)) {
+                            visible = false;
+                        }
+
+                        count++;
+                    }
+                }
+
+                textViewsSeen = count - 1;
 
                 videoTimer();
 
@@ -497,7 +529,7 @@ public class GameActivity extends AppCompatActivity
         };
 
         YouTubePlayerSupportFragment youTubePlayerFragment = (YouTubePlayerSupportFragment) getSupportFragmentManager().findFragmentById(R.id.youtube_player_fragment);
-        youTubePlayerFragment.initialize(YouTubeConfig.getApiKey(), new YouTubePlayer.OnInitializedListener() {
+        Objects.requireNonNull(youTubePlayerFragment).initialize(YouTubeConfig.getApiKey(), new YouTubePlayer.OnInitializedListener() {
             @Override
             public void onInitializationSuccess(YouTubePlayer.Provider provider, YouTubePlayer youTubePlayer, boolean b) {
 
@@ -522,8 +554,13 @@ public class GameActivity extends AppCompatActivity
         });
 
         // create resizable scroll view
+        DisplayMetrics displayMetrics = new DisplayMetrics();
+        getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
+        int scrollViewHeight = (int) Math.round(displayMetrics.heightPixels * 0.48);
+
         scrollView = new ScrollViewWithMaxHeight(getApplicationContext());
-        scrollView.setMaxHeight(800);
+        scrollView.setMaxHeight(scrollViewHeight);
+        scrollView.setVerticalScrollBarEnabled(false);
 
         intent = getIntent();
         songId = intent.getIntExtra("songId", -1);
@@ -554,7 +591,9 @@ public class GameActivity extends AppCompatActivity
         // initializing variables not included in bigLayout
         controlLayout = findViewById(R.id.controlLayout);
         controlButton1 = findViewById(R.id.controlButton1);
+        controlButton1.getBackground().setColorFilter(Color.parseColor("#D6EAF8"), PorterDuff.Mode.MULTIPLY);
         controlButton2 = findViewById(R.id.controlButton2);
+        controlButton2.getBackground().setColorFilter(Color.parseColor("#D6EAF8"), PorterDuff.Mode.MULTIPLY);
     }
 
     /**
@@ -601,6 +640,9 @@ public class GameActivity extends AppCompatActivity
                 Button button = new Button(getApplicationContext());
                 button.setText(optionsArray.get(i));
                 button.setLayoutParams(param);
+                button.getBackground().setColorFilter(Color.parseColor("#D6EAF8"), PorterDuff.Mode.MULTIPLY);
+                button.setTextSize(16);
+                button.setTextColor(Color.parseColor("#1F618D"));
                 button.setOnClickListener(this);
                 gridLayout.addView(button, i);
 
