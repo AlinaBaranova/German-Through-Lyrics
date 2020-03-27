@@ -18,7 +18,7 @@ public class ListAdapter extends BaseAdapter {
     private ArrayList<String> artistNames;
     private ArrayList<String> songNames;
 
-    private ListAdapter(Context context, ArrayList<Bitmap> images, ArrayList<String> artistNames, ArrayList<String> songNames) {
+    public ListAdapter(Context context, ArrayList<Bitmap> images, ArrayList<String> artistNames, ArrayList<String> songNames) {
         this.context = context;
         this.images = images;
         this.artistNames = artistNames;

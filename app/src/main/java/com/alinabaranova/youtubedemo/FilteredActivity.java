@@ -49,7 +49,7 @@ public class FilteredActivity extends AppCompatActivity implements AdapterView.O
         sortType = intent.getStringExtra("sortType");
 
         // load database
-        getApplicationContext().deleteDatabase("app.db");
+//        getApplicationContext().deleteDatabase("app.db");
         DBHelper dbHelper = new DBHelper(getApplicationContext());
         database = dbHelper.getReadableDatabase();
 

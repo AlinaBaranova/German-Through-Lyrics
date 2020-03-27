@@ -7,6 +7,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -96,7 +97,7 @@ public class MenuActivity extends AppCompatActivity {
         topics.put("passive", "Passive");
 
         // load database
-        getApplicationContext().deleteDatabase("app.db");
+//        getApplicationContext().deleteDatabase("app.db");
         DBHelper dbHelper = new DBHelper(getApplicationContext());
         SQLiteDatabase database = dbHelper.getReadableDatabase();
 
@@ -232,27 +233,31 @@ public class MenuActivity extends AppCompatActivity {
 
         Intent newIntent;
 
-        String prevAct = intent.getStringExtra("prevAct");      // name of previous activity
+//        String prevAct = intent.getStringExtra("prevAct");      // name of previous activity
+//
+//        Log.i("Previous activity", prevAct);
+//
+//        // previous activity is filtered activity
+//        if (prevAct.equals("FilteredActivity")) {
+//
+//            newIntent = new Intent(getApplicationContext(), FilteredActivity.class);
+//            // get name of filter used in filtered activity
+//            String sortType = intent.getStringExtra("sortType");
+//            newIntent.putExtra("sortType", sortType);
+//
+//            // depending on filter, put values to intent
+//            if (sortType.equals("constr")) {
+//                newIntent.putExtra("constrType", intent.getStringExtra("constrType"));
+//            } else {
+//                newIntent.putExtra("genre", intent.getStringExtra("genre"));
+//            }
+//
+//        } else {
+//            // previous activity is start activity
+//            newIntent = new Intent(getApplicationContext(), StartActivity.class);
+//        }
 
-        // previous activity is filtered actovity
-        if (prevAct.equals("FilteredActivity")) {
-
-            newIntent = new Intent(getApplicationContext(), FilteredActivity.class);
-            // get name of filter used in filtered activity
-            String sortType = intent.getStringExtra("sortType");
-            newIntent.putExtra("sortType", sortType);
-
-            // depending on filter, put values to intent
-            if (sortType.equals("constr")) {
-                newIntent.putExtra("constrType", intent.getStringExtra("constrType"));
-            } else {
-                newIntent.putExtra("genre", intent.getStringExtra("genre"));
-            }
-
-        } else {
-            // previous activity is start activity
-            newIntent = new Intent(getApplicationContext(), StartActivity.class);
-        }
+        newIntent = new Intent(getApplicationContext(), StartActivity.class);
 
         startActivity(newIntent);
 

@@ -44,7 +44,7 @@ public class StartActivity extends AppCompatActivity implements SearchView.OnQue
         Objects.requireNonNull(getSupportActionBar()).hide();
 
         // load database
-        getApplicationContext().deleteDatabase("app.db");
+//        getApplicationContext().deleteDatabase("app.db");
         DBHelper dbHelper = new DBHelper(getApplicationContext());
         database = dbHelper.getReadableDatabase();
 

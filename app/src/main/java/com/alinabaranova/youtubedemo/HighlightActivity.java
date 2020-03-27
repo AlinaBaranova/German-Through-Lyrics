@@ -336,7 +336,7 @@ public class HighlightActivity extends AppCompatActivity {
         songId = intent.getIntExtra("songId", -1);
 
         // open database
-        getApplicationContext().deleteDatabase("app.db");
+//        getApplicationContext().deleteDatabase("app.db");
         DBHelper dbHelper = new DBHelper(getApplicationContext());
         database = dbHelper.getReadableDatabase();
 
