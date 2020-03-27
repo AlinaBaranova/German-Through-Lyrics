@@ -158,7 +158,6 @@ public class StartActivity extends AppCompatActivity implements SearchView.OnQue
         // open MenuActivity for song
         Intent intent = new Intent(getApplicationContext(), MenuActivity.class);
         intent.putExtra("songId", songId);
-        intent.putExtra("prevAct", "StartActivity");
         startActivity(intent);
     }
 

@@ -556,7 +556,7 @@ public class GameActivity extends AppCompatActivity
         // create resizable scroll view
         DisplayMetrics displayMetrics = new DisplayMetrics();
         getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
-        int scrollViewHeight = (int) Math.round(displayMetrics.heightPixels * 0.48);
+        int scrollViewHeight = (int) Math.round(displayMetrics.heightPixels * 0.58);
 
         scrollView = new ScrollViewWithMaxHeight(getApplicationContext());
         scrollView.setMaxHeight(scrollViewHeight);
@@ -638,6 +638,7 @@ public class GameActivity extends AppCompatActivity
                 param.rowSpec = GridLayout.spec(rowsAndCols.get(i)[1], 1, 1f);
 
                 Button button = new Button(getApplicationContext());
+                button.setTransformationMethod(null);
                 button.setText(optionsArray.get(i));
                 button.setLayoutParams(param);
                 button.getBackground().setColorFilter(Color.parseColor("#D6EAF8"), PorterDuff.Mode.MULTIPLY);

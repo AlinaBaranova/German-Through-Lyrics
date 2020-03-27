@@ -179,14 +179,6 @@ public class FilteredActivity extends AppCompatActivity implements AdapterView.O
         // open MenuActivity for song
         Intent intent = new Intent(getApplicationContext(), MenuActivity.class);
         intent.putExtra("songId", songId);
-        intent.putExtra("prevAct", "FilteredActivity");
-        intent.putExtra("sortType", sortType);
-
-        if (sortType.equals("constr")) {
-            intent.putExtra("constrType", constrType);
-        } else {
-            intent.putExtra("genre", genre);
-        }
 
         startActivity(intent);
     }
