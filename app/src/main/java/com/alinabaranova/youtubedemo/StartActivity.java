@@ -19,10 +19,6 @@ import java.util.Objects;
 
 public class StartActivity extends AppCompatActivity implements SearchView.OnQueryTextListener, AdapterView.OnItemClickListener {
 
-    ArrayList<Bitmap> images = new ArrayList<>();       // all album covers in database
-    ArrayList<String> artistNames = new ArrayList<>();  // all artist names for songs
-    ArrayList<String> songNames = new ArrayList<>();    // all songs names
-
     ArrayList<Bitmap> imagesShown = new ArrayList<>();          // images of songs in filter
     ArrayList<String> artistNamesShown = new ArrayList<>();     // artist name for songs in filter
     ArrayList<String> songNamesShown = new ArrayList<>();       // song name of songs in filter
@@ -47,24 +43,6 @@ public class StartActivity extends AppCompatActivity implements SearchView.OnQue
 //        getApplicationContext().deleteDatabase("app.db");
         DBHelper dbHelper = new DBHelper(getApplicationContext());
         database = dbHelper.getReadableDatabase();
-
-        // query database
-        Cursor c = database.rawQuery("SELECT * FROM songs ORDER BY artist", null);
-        if (c.getCount() > 0) {
-            int songNameIndex = c.getColumnIndex("song_name");
-            int artistIndex = c.getColumnIndex("artist");
-            int imageIndex = c.getColumnIndex("album_cover");
-
-            c.moveToFirst();
-            do {
-                byte[] imgByte = c.getBlob(imageIndex);
-                images.add(BitmapFactory.decodeByteArray(imgByte, 0, imgByte.length));
-                artistNames.add(c.getString(artistIndex));
-                songNames.add(c.getString(songNameIndex));
-
-            } while (c.moveToNext());
-        }
-        c.close();
 
         // find listview and set clicklistener to it
         listView = findViewById(R.id.listView);
@@ -98,26 +76,33 @@ public class StartActivity extends AppCompatActivity implements SearchView.OnQue
         // add songs that contain query
         if (text.length() > 0) {
             String[] textParts = text.split(" ");
-            for (int i = 0; i < artistNames.size(); i++) {
-                Bitmap curImage = images.get(i);
-                String curArtistName = artistNames.get(i);
-                String curSongName = songNames.get(i);
 
-                // check if artist or song name contain all parts of query
-                boolean ifFound = true;
-                for (String textPart : textParts) {
-                    if (!curArtistName.toLowerCase().contains(textPart) && !curSongName.toLowerCase().contains(textPart)) {
-                        ifFound = false;
+            Cursor c = database.rawQuery("SELECT song_name, artist, album_cover FROM songs ORDER BY artist", null);
+            if (c.getCount() > 0) {
+                c.moveToFirst();
+                while(c.moveToNext()) {
+
+                    String artistName = c.getString(1);
+                    String songName = c.getString(0);
+
+                    boolean ifFound = true;
+                    for (String textPart : textParts) {
+                        if (! artistName.toLowerCase().contains(textPart) && ! songName.toLowerCase().contains(textPart)) {
+                            ifFound = false;
+                        }
+                    }
+
+                    if (ifFound) {
+
+                        byte[] imgByte = c.getBlob(2);
+                        imagesShown.add(BitmapFactory.decodeByteArray(imgByte, 0, imgByte.length));
+                        artistNamesShown.add(artistName);
+                        songNamesShown.add(songName);
+
                     }
                 }
-
-                // add information for songs whose artist and song name contain all parts of query
-                if (ifFound & !(artistNamesShown.contains(curArtistName) && songNamesShown.contains(curSongName))) {
-                    imagesShown.add(curImage);
-                    artistNamesShown.add(curArtistName);
-                    songNamesShown.add(curSongName);
-                }
             }
+            c.close();
 
             // hide scrollviews with grammatical topics and genres
             topicScrollView.setVisibility(View.GONE);
